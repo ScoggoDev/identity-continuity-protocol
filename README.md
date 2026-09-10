@@ -22,11 +22,11 @@ hermes skills install ScoggoDev/identity-continuity-protocol/skills/identity-con
 
 ## What it solves
 
-Each channel/session of a Hermes agent is an isolated process — ask your
+Each channel/session of a Hermes agent is an isolated process, ask your
 WhatsApp session about something you told the TUI session five minutes ago
 and it has no idea, even though it's "the same agent" to the user. This
 skill fixes that with infrastructure (a `pre_llm_call` hook diffing session
-databases), not a passive "please remember to check" instruction — which
+databases), not a passive "please remember to check" instruction, which
 was tested and found unreliable on its own.
 
 See [skills/identity-continuity-protocol/SKILL.md](skills/identity-continuity-protocol/)
