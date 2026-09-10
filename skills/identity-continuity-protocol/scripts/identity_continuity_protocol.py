@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-identity_continuity_protocol.py — Hermes pre_llm_call hook implementing an
+identity_continuity_protocol.py, Hermes pre_llm_call hook implementing an
 Identity Continuity Protocol between sessions/channels of the same agent
 profile.
 
@@ -16,11 +16,11 @@ answering on WhatsApp and "Prometeo" answering on the CLI are two separate
 inference processes with no shared working memory. What they DO have is a
 persistent store on disk (state.db per session). This hook makes each
 process check that shared store before every turn, so any instance can
-surface what another instance of the SAME agent identity said or did —
+surface what another instance of the SAME agent identity said or did -
 without needing a single continuous execution thread (there isn't one).
 
 WHY THIS EXISTS
-A passive "remember to check other sessions" instruction is NOT reliable —
+A passive "remember to check other sessions" instruction is NOT reliable -
 verified empirically: an agent missed a cross-channel continuity test (a
 code word agreed on one channel, unrecognized on another) despite having
 that exact instruction loaded as a skill. This hook is infrastructure, not
@@ -30,13 +30,13 @@ WHAT IT DOES
 1. Registered as a `pre_llm_call` shell hook (fires before EVERY turn, any
    channel: CLI, gateway, cron, Desktop).
 2. Reads a small on-disk checkpoint tracking "last message rowid seen" per
-   (profile, source) pair — rowid, not a wall-clock timestamp, because
+   (profile, source) pair, rowid, not a wall-clock timestamp, because
    SQLite's rowid is a monotonic per-database counter with no clock-skew
    ambiguity between processes (two events in the same second can never
    tie or misorder).
 3. For each source this profile is subscribed to, if there's new activity
    since the last checkpoint, builds a short summary block and returns it
-   via Hermes' `{"context": "..."}` wire protocol — injected automatically
+   via Hermes' `{"context": "..."}` wire protocol, injected automatically
    into the current turn's prompt.
 4. Zero cost when nothing changed (prints nothing).
 
@@ -44,7 +44,7 @@ IMPORTANT SCOPING: this is transactive memory WITHIN one agent identity
 (one profile's own sessions across channels), not a broadcast between
 different agent identities/profiles. Research on multi-agent real-time
 sync (see references below) found full-broadcast between DIFFERENT agents
-increases hallucination/error propagation — one agent's mistaken belief
+increases hallucination/error propagation, one agent's mistaken belief
 gets adopted by the others before anyone corrects it. Scoping sync to "the
 same identity's own parallel sessions" avoids that failure mode by design:
 there's only one identity's beliefs being reconciled, not several competing
@@ -54,7 +54,7 @@ SETUP
 1. Copy this script somewhere stable, e.g. ~/.hermes/agent-hooks/identity_continuity_protocol.py
 2. Edit SOURCES below to point at your actual state.db paths (default profile
    + one per named profile you run).
-3. Edit SUBSCRIPTIONS to your team's actual org chart — NOT everyone needs
+3. Edit SUBSCRIPTIONS to your team's actual org chart, NOT everyone needs
    to hear everything; every subscription costs tokens on every turn.
 4. Register in each profile's config.yaml:
 
@@ -70,24 +70,24 @@ SETUP
 LESSONS LEARNED (the hard way, keep these if you fork this)
 - A shell hook is auto-revoked SILENTLY by Hermes if you edit the script
   after it was approved (mtime check, anti-tampering). After every edit,
-  run `hermes hooks doctor` — if it says "script modified since approval",
+  run `hermes hooks doctor`, if it says "script modified since approval",
   re-approve interactively or re-sync `script_mtime_at_approval` in
   `~/.hermes/shell-hooks-allowlist.json`, or the hook silently stops firing.
 - Keep injected context SHORT and clearly labeled as background, or the
   model can start echoing/quoting the injected block verbatim in its reply
   instead of treating it as silent context (seen in production: raising the
   per-message char limit caused the model to literally quote old assistant
-  turns back to the user on WhatsApp — reverted, added an explicit
+  turns back to the user on WhatsApp, reverted, added an explicit
   "don't quote this" instruction in the prompt).
 - Do NOT try to solve "wake a fully idle session with no one talking to it"
   via Hermes' native `/handoff`/`request_handoff` triggered automatically
-  from a currently-running session — it deadlocks: the handoff watcher
+  from a currently-running session, it deadlocks: the handoff watcher
   waits for the source session to have no active lease
   (`runtime/active_sessions.json`), which never happens while that same
   session is mid-turn executing the hook that requested the handoff.
   Verified stuck in `running` state for 17+ minutes before abandoning that
   approach. This hook instead guarantees "whenever you talk to ANY instance,
-  it's caught up" — not "an idle instance proactively interrupts you".
+  it's caught up", not "an idle instance proactively interrupts you".
   For the proactive-wake case, Hermes has a separate, purpose-built
   mechanism: `gateway/wake.py` (used today for Kanban task-completion
   wakes) resumes a real existing session from a background event; the same
@@ -100,7 +100,7 @@ REFERENCES
 - On the risk of naive full real-time broadcast between distinct agents
   (context contamination / hallucination propagation): "Hallucination as
   Context Drift: Synchronization Protocols for Multi-Agent LLM Systems"
-  (arXiv:2606.21666) — found full-broadcast sync raised hallucination rate
+  (arXiv:2606.21666), found full-broadcast sync raised hallucination rate
   34% over no-sync; a selective/divergence-triggered protocol performed
   better with far fewer sync events. This hook's design (scoped to one
   identity's own sessions, checkpoint-diffed rather than full-broadcast)
@@ -126,7 +126,7 @@ SOURCES = {
 }
 
 # ── EDIT THIS: subscription matrix (who listens to whom) ────────────────
-# Scoped to ONE identity's own sessions by default — see module docstring
+# Scoped to ONE identity's own sessions by default, see module docstring
 # for why cross-identity broadcast is a different (riskier) problem.
 SUBSCRIPTIONS = {
     "default": [],  # example: ["researcher", "sales"] if you DO want a
@@ -260,14 +260,14 @@ def main():
 
     if pieces:
         context = (
-            "[Identity continuity — automatic cross-channel context. This is "
+            "[Identity continuity, automatic cross-channel context. This is "
             "BACKGROUND info only about what happened in other channels/"
             "sessions of the same agent identity. Do NOT quote or repeat "
-            "these blocks verbatim in your reply — respond normally to the "
+            "these blocks verbatim in your reply, respond normally to the "
             "user's current message, using this only if relevant, "
             "summarized/naturally, never copy-pasted.]\n"
             + "\n\n".join(pieces)
-            + "\n[End identity continuity context — continue answering the user's message normally]"
+            + "\n[End identity continuity context, continue answering the user's message normally]"
         )
         print(json.dumps({"context": context}))
 
